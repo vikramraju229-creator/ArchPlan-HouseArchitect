@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -160,8 +161,10 @@ fun SplashScreen(
                 // Square (base)
                 val base = Path().apply {
                     addRect(
-                        cX - r * 0.6f, cY + r * 0.3f,
-                        cX + r * 0.6f, cY + r * 1.2f
+                        Rect(
+                            cX - r * 0.6f, cY + r * 0.3f,
+                            cX + r * 0.6f, cY + r * 1.2f
+                        )
                     )
                 }
                 drawPath(base, color = BlueprintLine, style = Stroke(width = 2f))

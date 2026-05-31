@@ -281,10 +281,12 @@ private fun PlanCard(
     }
 }
 
+@Composable
 private fun <T> remember(block: () -> T): T {
     return androidx.compose.runtime.remember { block() }
 }
 
+@Composable
 private fun <T> remember(key: Any?, block: () -> T): T {
     return androidx.compose.runtime.remember(key) { block() }
 }
