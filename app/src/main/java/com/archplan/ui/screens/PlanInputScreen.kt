@@ -315,6 +315,7 @@ fun PlanInputScreen(
 
 // ── Step 1: Plot Dimensions ──────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlotDimensionsStep(viewModel: PlanInputViewModel) {
     Column(
@@ -431,6 +432,7 @@ private fun PlotDimensionsStep(viewModel: PlanInputViewModel) {
 
 // ── Step 2: Setbacks ─────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SetbacksStep(viewModel: PlanInputViewModel) {
     Column(
@@ -578,6 +580,7 @@ private fun SetbacksStep(viewModel: PlanInputViewModel) {
 
 // ── Step 3: House Configuration ──────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HouseConfigStep(viewModel: PlanInputViewModel) {
     Column(
