@@ -1,5 +1,6 @@
 package com.archplan.ui.viewmodel
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,7 +13,9 @@ import com.archplan.domain.usecase.CalculateAreasUseCase
 import com.archplan.domain.usecase.ExportPlanUseCase
 import com.archplan.domain.usecase.GeneratePlanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
@@ -24,7 +27,8 @@ class PlanOutputViewModel @Inject constructor(
     private val planRepository: PlanRepository,
     private val generatePlanUseCase: GeneratePlanUseCase,
     private val calculateAreasUseCase: CalculateAreasUseCase,
-    private val exportPlanUseCase: ExportPlanUseCase
+    private val exportPlanUseCase: ExportPlanUseCase,
+    private val application: Application
 ) : ViewModel() {
 
     var housePlan by mutableStateOf<HousePlan?>(null)
@@ -88,13 +92,10 @@ class PlanOutputViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val plan = housePlan ?: return@launch
-                val bitmap = exportPlanUseCase.exportToBitmap(
-                    plan = plan,
-                    rooms = generatedRooms,
-                    houseWidth = houseWidth,
-                    houseHeight = houseHeight
-                )
-                exportMessage = "Plan ready to share"
+                val bitmap = withContext(Dispatchers.Default) {
+                    exportPlanUseCase.exportToBitmap(plan = plan)
+                }
+                exportMessage = "Plan ready to share (${bitmap.width}x${bitmap.height})"
                 isExporting = false
             } catch (e: Exception) {
                 errorMessage = "Export failed: ${e.message}"
@@ -108,22 +109,13 @@ class PlanOutputViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val plan = housePlan ?: return@launch
-                exportPlanUseCase.exportToPdf(
-                    plan = plan,
-                    rooms = generatedRooms,
-                    houseWidth = houseWidth,
-                    houseHeight = houseHeight,
-                    onComplete = { file ->
-                        exportMessage = "PDF saved: ${file.name}"
-                        isExporting = false
-                    },
-                    onError = { e ->
-                        errorMessage = "PDF export failed: ${e.message}"
-                        isExporting = false
-                    }
-                )
+                val file = withContext(Dispatchers.Default) {
+                    exportPlanUseCase.exportToPdf(context = application, plan = plan)
+                }
+                exportMessage = "PDF saved: ${file.name}"
+                isExporting = false
             } catch (e: Exception) {
-                errorMessage = "Export failed: ${e.message}"
+                errorMessage = "PDF export failed: ${e.message}"
                 isExporting = false
             }
         }

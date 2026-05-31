@@ -1,9 +1,5 @@
 # ArchPlan ProGuard Rules
 
-# Keep iText
--keep class com.itextpdf.** { *; }
--dontwarn com.itextpdf.**
-
 # Keep Room entities
 -keep class com.archplan.data.model.** { *; }
 
