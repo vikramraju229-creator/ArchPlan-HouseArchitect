@@ -180,11 +180,12 @@ class GeneratePlanUseCase @Inject constructor() {
                 }
             if (nearest != null) {
                 usedBedrooms.add(nearest.id)
-                // Place bathroom adjacent to bedroom
-                bathroom.copy(
-                    x = nearest.x + nearest.width + CORRIDOR,
-                    y = nearest.y
-                )
+                // Place bathroom adjacent to bedroom, clamped inside house boundary
+                val bathX = (nearest.x + nearest.width + CORRIDOR)
+                    .coerceAtMost(houseW - bathroom.width - 1f)
+                val bathY = nearest.y
+                    .coerceAtMost(houseH - bathroom.height - 1f)
+                bathroom.copy(x = bathX, y = bathY)
             } else {
                 bathroom
             }
@@ -206,8 +207,10 @@ class GeneratePlanUseCase @Inject constructor() {
             if (onRightWall || onBottomWall) {
                 balcony // Already on exterior
             } else {
-                // Move to right wall
-                balcony.copy(x = houseW - balcony.width - 1f, y = balcony.y)
+                // Move to right wall, clamped inside house boundary
+                val balkX = (houseW - balcony.width - 1f).coerceAtLeast(0f)
+                val balkY = balcony.y.coerceAtMost(houseH - balcony.height - 1f)
+                balcony.copy(x = balkX, y = balkY)
             }
         }
 

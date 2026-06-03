@@ -115,6 +115,8 @@ class PlanInputViewModel @Inject constructor(
     fun goToStep(step: Int) {
         if (step in 0..3 && step <= currentStep + 1) {
             currentStep = step
+            // Auto-populate rooms when entering the Room Planner step
+            if (step == 3) autoPopulateRooms()
         }
     }
 
@@ -288,6 +290,8 @@ class PlanInputViewModel @Inject constructor(
         validationWarnings = validation.warnings
 
         if (!validation.isValid) {
+            errorMessage = validation.errors.firstOrNull()?.message
+                ?: "Plan validation failed. Try reducing room sizes or increasing the plot."
             isGenerating = false
             return
         }

@@ -74,9 +74,11 @@ import com.archplan.data.model.GardenLawnArea
 import com.archplan.data.model.HouseType
 import com.archplan.data.model.ParkingType
 import com.archplan.data.model.PlotShape
+import com.archplan.data.model.RoomData
 import com.archplan.data.model.RoomType
 import com.archplan.data.model.StaircasePosition
 import com.archplan.data.model.UnitType
+import com.archplan.ui.components.BlueprintCanvas
 import com.archplan.ui.components.CompassPicker
 import com.archplan.ui.components.RoomCard
 import com.archplan.ui.components.RoomTypeGrid
@@ -734,11 +736,82 @@ private fun HouseConfigStep(viewModel: PlanInputViewModel) {
 
 @Composable
 private fun RoomPlannerStep(viewModel: PlanInputViewModel) {
+    // Calculate house dimensions for the blueprint preview
+    val lenInFt = if (viewModel.plotUnit == UnitType.METERS)
+        viewModel.plotLength * 3.28084f else viewModel.plotLength
+    val brdInFt = if (viewModel.plotUnit == UnitType.METERS)
+        viewModel.plotBreadth * 3.28084f else viewModel.plotBreadth
+    val houseW = (brdInFt - viewModel.leftSetback - viewModel.rightSetback).coerceAtLeast(10f)
+    val houseH = (lenInFt - viewModel.frontSetback - viewModel.rearSetback).coerceAtLeast(10f)
+
+    // Simple layout preview: pack rooms left-to-right, top-to-bottom
+    val previewRooms = remember(viewModel.rooms, houseW, houseH) {
+        val placed = mutableListOf<RoomData>()
+        var x = 0f
+        var y = 0f
+        var rowH = 0f
+        val corridor = 2f
+        for (room in viewModel.rooms) {
+            val rw = room.width.coerceIn(3f, houseW)
+            val rh = room.height.coerceIn(3f, houseH)
+            if (x + rw > houseW) {
+                x = 0f
+                y += rowH + corridor
+                rowH = 0f
+            }
+            if (y + rh > houseH) {
+                // Shrink to fit
+                val adjW = minOf(rw, houseW - x)
+                val adjH = minOf(rh, houseH - y)
+                if (adjW >= 3f && adjH >= 3f) {
+                    placed.add(room.copy(x = x, y = y, width = adjW, height = adjH))
+                    rowH = maxOf(rowH, adjH)
+                    x += adjW
+                }
+            } else {
+                placed.add(room.copy(x = x, y = y, width = rw, height = rh))
+                rowH = maxOf(rowH, rh)
+                x += rw
+            }
+        }
+        placed
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
+            // ── Live Blueprint Preview ─────────────────────────────────────
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = BlueprintBg)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                        if (viewModel.rooms.isEmpty()) {
+                            Text(
+                                text = "Add rooms below to see the blueprint preview",
+                                color = BlueprintLine.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            BlueprintCanvas(
+                                rooms = previewRooms,
+                                houseWidth = houseW,
+                                houseHeight = houseH,
+                                selectedRoomIndex = -1,
+                                onRoomSelected = {},
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 // Room count summary
                 Card(
@@ -757,17 +830,17 @@ private fun RoomPlannerStep(viewModel: PlanInputViewModel) {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Area progress
+                        // Area progress — now compared to buildable area
                         val totalArea = viewModel.rooms.sumOf { (it.width * it.height).toDouble() }.toFloat()
-                        val maxArea = viewModel.plotLength * viewModel.plotBreadth
-                        val progress = if (maxArea > 0f) (totalArea / maxArea).coerceIn(0f, 1f) else 0f
+                        val buildableArea = houseW * houseH
+                        val progress = if (buildableArea > 0f) (totalArea / buildableArea).coerceIn(0f, 1f) else 0f
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Total Room Area: ${"%.0f".format(totalArea)} sq ft",
+                                text = "Room Area: ${"%.0f".format(totalArea)} / ${"%.0f".format(buildableArea)} sq ft",
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
@@ -780,9 +853,19 @@ private fun RoomPlannerStep(viewModel: PlanInputViewModel) {
                         LinearProgressIndicator(
                             progress = { progress },
                             modifier = Modifier.fillMaxWidth(),
-                            color = if (progress > 0.9f) WarningOrange else MaterialTheme.colorScheme.primary,
+                            color = if (progress > 0.9f) WarningOrange else if (progress > 1f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
+
+                        // Show warning if rooms exceed buildable area
+                        if (progress > 1f) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "⚠ Rooms exceed buildable area by ${"%.0f".format(totalArea - buildableArea)} sq ft — reduce room sizes",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }
